@@ -13,13 +13,13 @@ app.use(bodyParser.json());
 
 app.use(cors({
   origin: [
-    "http://localhost:5173", 
-    "https://elegant-weds-frontend.vercel.app" 
+    "http://localhost:5173",
+    "https://elegant-weds-frontend.vercel.app",
+    "https://elegant-weds-frontend-l8g79ia54-carmel-ngoyis-projects.vercel.app"
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
-
 
 let db;
 
