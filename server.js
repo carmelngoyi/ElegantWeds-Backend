@@ -10,7 +10,6 @@ const PORT = process.env.PORT || 3000;
 const MONGODB = process.env.MONGODB_URI;
 
 app.use(bodyParser.json());
-import cors from "cors";
 
 app.use(cors({
   origin: [
