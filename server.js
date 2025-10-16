@@ -7,10 +7,9 @@ const cors = require("cors");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const MONGODB = process.env.MONGODB_URI;
+const MONGODB_URI = process.env.MONGODB_URI;
 
 app.use(bodyParser.json());
-
 app.use(cors({
   origin: [
     "http://localhost:5173",
@@ -21,23 +20,9 @@ app.use(cors({
   credentials: true
 }));
 
-let db;
+let db; 
 
-// Connect to MongoDB 
-async function connectToMongo() {
-  try {
-    const client = new MongoClient(MONGODB);
-    await client.connect();
-    db = client.db("Elegant_Weds"); 
-    console.log("Connected to MongoDB");
-  } catch (error) {
-    console.error("MongoDB connection error:", error);
-    process.exit(1);
-  }
-}
-connectToMongo();
-
-// Basic Auth for protected routes
+// Basic Auth 
 async function basicAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Basic ")) {
@@ -47,26 +32,33 @@ async function basicAuth(req, res, next) {
   const [email, password] = base64.decode(authHeader.split(" ")[1]).split(":");
   const user = await db.collection("Users").findOne({ email });
   if (!user) return res.status(401).json({ message: "User not found" });
-  const decodedStoredPassword = base64.decode(user.password);
-  if (decodedStoredPassword !== password) return res.status(401).json({ message: "Invalid password" });
+
+  const decodedPassword = base64.decode(user.password);
+  if (decodedPassword !== password) return res.status(401).json({ message: "Invalid password" });
+
   req.user = user;
   next();
 }
 
-// SIGNUP 
+// Signup
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, password, confirmPassword } = req.body;
 
     if (!email.includes("@")) throw new Error("Invalid email");
-    if (password.length < 8) throw new Error("Password must be at least 8 characters long");
+    if (password.length < 8) throw new Error("Password must be at least 8 characters");
     if (password !== confirmPassword) throw new Error("Passwords do not match");
 
     const existingUser = await db.collection("Users").findOne({ email });
     if (existingUser) return res.status(409).json({ error: "Email already registered" });
 
     const encodedPassword = base64.encode(password);
-    const result = await db.collection("Users").insertOne({ name, email, password: encodedPassword, createdAt: new Date() });
+    const result = await db.collection("Users").insertOne({
+      name,
+      email,
+      password: encodedPassword,
+      createdAt: new Date()
+    });
 
     res.status(201).json({ message: "User created", user_id: result.insertedId });
   } catch (err) {
@@ -74,7 +66,7 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// LOGIN
+// Login
 app.post("/login", async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -84,24 +76,26 @@ app.post("/login", async (req, res) => {
 
     const [email, password] = base64.decode(authHeader.split(" ")[1]).split(":");
     const user = await db.collection("Users").findOne({ email });
-    console.log(user);
 
     if (!user || base64.decode(user.password) !== password) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    res.status(200).json({ message: "Login successful", user: { email: user.email, _id: user._id } });
+    res.status(200).json({
+      message: "Login successful",
+      user: { email: user.email, _id: user._id }
+    });
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-//Dresses 
+// Dresses CRUD
 app.get("/dresses", async (req, res) => {
   try {
-    const dresses = await db.collection("dresses").find({}).toArray();
+    const dresses = await db.collection("dresses").find().toArray();
     res.json(dresses);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch dresses" });
   }
 });
@@ -109,9 +103,9 @@ app.get("/dresses", async (req, res) => {
 app.post("/dresses", async (req, res) => {
   try {
     const result = await db.collection("dresses").insertOne(req.body);
-    res.status(201).json({ message: "Product created", id: result.insertedId });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to add dresses" });
+    res.status(201).json({ message: "Dress created", id: result.insertedId });
+  } catch {
+    res.status(500).json({ error: "Failed to add dress" });
   }
 });
 
@@ -119,9 +113,9 @@ app.put("/dresses/:id", async (req, res) => {
   try {
     const { id } = req.params;
     await db.collection("dresses").updateOne({ _id: new ObjectId(id) }, { $set: req.body });
-    res.json({ message: "Product updated" });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to update dresses" });
+    res.json({ message: "Dress updated" });
+  } catch {
+    res.status(500).json({ error: "Failed to update dress" });
   }
 });
 
@@ -129,18 +123,18 @@ app.delete("/dresses/:id", async (req, res) => {
   try {
     const { id } = req.params;
     await db.collection("dresses").deleteOne({ _id: new ObjectId(id) });
-    res.json({ message: "Product deleted" });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to delete dresses" });
+    res.json({ message: "Dress deleted" });
+  } catch {
+    res.status(500).json({ error: "Failed to delete dress" });
   }
 });
 
-//Accessories
+// Accessories
 app.get("/accessories", async (req, res) => {
   try {
-    const accessories = await db.collection("accessories").find({}).toArray();
+    const accessories = await db.collection("accessories").find().toArray();
     res.json(accessories);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch accessories" });
   }
 });
@@ -148,9 +142,9 @@ app.get("/accessories", async (req, res) => {
 app.post("/accessories", async (req, res) => {
   try {
     const result = await db.collection("accessories").insertOne(req.body);
-    res.status(201).json({ message: "Product created", id: result.insertedId });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to add accessories" });
+    res.status(201).json({ message: "Accessory created", id: result.insertedId });
+  } catch {
+    res.status(500).json({ error: "Failed to add accessory" });
   }
 });
 
@@ -158,9 +152,9 @@ app.put("/accessories/:id", async (req, res) => {
   try {
     const { id } = req.params;
     await db.collection("accessories").updateOne({ _id: new ObjectId(id) }, { $set: req.body });
-    res.json({ message: "Product updated" });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to update accessories" });
+    res.json({ message: "Accessory updated" });
+  } catch {
+    res.status(500).json({ error: "Failed to update accessory" });
   }
 });
 
@@ -168,19 +162,18 @@ app.delete("/accessories/:id", async (req, res) => {
   try {
     const { id } = req.params;
     await db.collection("accessories").deleteOne({ _id: new ObjectId(id) });
-    res.json({ message: "Product deleted" });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to delete accessories" });
+    res.json({ message: "Accessory deleted" });
+  } catch {
+    res.status(500).json({ error: "Failed to delete accessory" });
   }
 });
 
-
-// REVIEWS
+// Reviews
 app.get("/reviews", async (req, res) => {
   try {
     const reviews = await db.collection("reviews").find().toArray();
     res.json(reviews);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch reviews" });
   }
 });
@@ -188,25 +181,24 @@ app.get("/reviews", async (req, res) => {
 app.post("/reviews", basicAuth, async (req, res) => {
   try {
     const reviewData = {
-        ...req.body,
-        userId: req.user._id, 
-        userName: req.user.name, 
-        createdAt: new Date()
+      ...req.body,
+      userId: req.user._id,
+      userName: req.user.name,
+      createdAt: new Date()
     };
-    
     const result = await db.collection("reviews").insertOne(reviewData);
     res.status(201).json({ message: "Review added", id: result.insertedId, review: reviewData });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to add review" });
   }
 });
 
-// BOOKINGS
+// Bookings
 app.get("/bookings", async (req, res) => {
   try {
     const bookings = await db.collection("bookings").find().toArray();
     res.json(bookings);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch bookings" });
   }
 });
@@ -215,17 +207,16 @@ app.post("/bookings", async (req, res) => {
   try {
     const result = await db.collection("bookings").insertOne(req.body);
     res.status(201).json({ message: "Booking saved", id: result.insertedId });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to save booking" });
   }
 });
 
-
-// Protected User Routes
+// Protected Users Routes 
 app.use("/Users", basicAuth);
 
 app.get("/Users", async (req, res) => {
-  const users = await db.collection("Users").find({}).toArray();
+  const users = await db.collection("Users").find().toArray();
   res.json(users);
 });
 
@@ -241,7 +232,20 @@ app.delete("/Users/:id", async (req, res) => {
   res.json({ message: "User deleted" });
 });
 
+async function startServer() {
+  try {
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    db = client.db("Elegant_Weds");
+    console.log(" Connected to MongoDB");
 
-app.listen(PORT, () => {
-  console.log(` Website running at http://localhost:${PORT}`);
-});
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to connect to MongoDB:", error);
+    process.exit(1);
+  }
+}
+
+startServer();
