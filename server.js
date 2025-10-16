@@ -10,12 +10,17 @@ const PORT = process.env.PORT || 3000;
 const MONGODB = process.env.MONGODB_URI;
 
 app.use(bodyParser.json());
-app.use(
-  cors({
-    origin: "http://localhost:5173", 
-    credentials: true,
-  })
-);
+import cors from "cors";
+
+app.use(cors({
+  origin: [
+    "http://localhost:5173", 
+    "https://elegant-weds-frontend.vercel.app" 
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 
 let db;
 
